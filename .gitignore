@@ -1,0 +1,14 @@
+
+*.o
+*.obj
+*.gch
+*.pch
+*.so
+*.dylib
+*.dll
+*.lai
+*.la
+*.a
+*.lib
+/build/
+.vscode/
