@@ -4,14 +4,14 @@
 
 #define PORT 8080
 
-int main() {
+int main()
+{
     // Start the server loop
-    if (start_server(PORT) < 0) {
+    if (start_server(PORT) < 0)
+    {
         fprintf(stderr, "Failed to start server\n");
         return 1;
     }
-
-    printf("Server started and listening on port %d\n", PORT);
 
     return 0;
 }

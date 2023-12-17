@@ -12,4 +12,4 @@ include_directories(connection)
 include_directories(server)
 
 # Add executable target with source files
-add_executable(http_server_c connection/connection.c server/server.c)
+add_executable(http_server_c main.c connection/connection.c server/server.c)
