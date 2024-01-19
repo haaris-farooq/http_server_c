@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 int init_server_socket(int port)
 {
@@ -59,7 +60,11 @@ int accept_connection(int server_socket)
     timeout.tv_sec = 1;
     timeout.tv_usec = 0;
 
-    int result = select(server_socket + 1, &read_fds, NULL, NULL, &timeout);
+    int result;
+    do {
+        result = select(server_socket + 1, &read_fds, NULL, NULL, &timeout);
+    } while (result == -1 && errno == EINTR);
+
     if (result == -1)
     {
         perror("select");
@@ -73,7 +78,10 @@ int accept_connection(int server_socket)
     else
     {
         // A new connection is available, accept it
-        client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_len);
+        do {
+            client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_len);
+        } while (client_socket == -1 && errno == EINTR);
+
         if (client_socket < 0)
         {
             perror("Error accepting connection");
@@ -81,57 +89,33 @@ int accept_connection(int server_socket)
         }
     }
 
-    // Buffer to store the HTTP request
-    char request[2048];
-
-    // Read the HTTP request
-    ssize_t bytes_received = recv(client_socket, request, sizeof(request) - 1, 0);
-    if (bytes_received < 0)
-    {
-        perror("Error reading request");
-        return -1;
-    }
-
-    // Null-terminate the request
-    request[bytes_received] = '\0';
-
-    // Print the request
-    printf("Received request:\n%s\n", request);
-
-    // Define the HTTP response
-    char *http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n"
-                      "<!DOCTYPE html>"
-                      "<html>"
-                      "<head>"
-                      "<title>Page Title</title>"
-                      "</head>"
-                      "<body>"
-                      "<h1>This is a Heading</h1>"
-                      "<p>This is a paragraph.</p>"
-                      "<p>This is another paragraph.</p>"
-                      "</body>"
-                      "</html>";
-
-    // Send the HTTP response to the client
-    if (send(client_socket, http_response, strlen(http_response), 0) < 0)
-    {
-        perror("Error sending response");
-        return -1;
-    }
-
-    // Close the connection
-    close(client_socket);
-
-    return 0;
+    return client_socket;
 }
 
 // Handle a connection from a client
 void handle_connection(int client_socket)
 {
-    char buffer[1024] = {0};
-    char *http_response = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
+    char buffer[2048] = {0};
+    char *http_response = "HTTP/1.1 200 OK\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Connection: close\r\n\r\n"
+                      "<!DOCTYPE html>"
+                      "<html>"
+                      "<head>"
+                      "<title>Hello World</title>"
+                      "</head>"
+                      "<body>"
+                      "<p><b>Hello world!</b></p>"
+                      "</body>"
+                      "</html>";
 
-    read(client_socket, buffer, 1024);
+    ssize_t bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("Error reading from socket");
+        return;
+    }
+    buffer[bytes_read] = '\0'; // Ensure null-termination
+
     printf("%s\n", buffer);
     write(client_socket, http_response, strlen(http_response));
     close(client_socket);
